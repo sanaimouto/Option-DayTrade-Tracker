@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>選擇權當沖當日交易紀錄器</title>
+    <title>選擇權當沖台指連動紀錄器 (完整版)</title>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -21,13 +21,13 @@
             border-radius: 10px;
             box-shadow: 0 4px 8px rgba(0,0,0,0.05);
             width: 100%;
-            max-width: 950px;
+            max-width: 1100px;
             box-sizing: border-box;
         }
         h2 {
             color: #2c3e50;
             margin-top: 0;
-            border-left: 5px solid #3498db;
+            border-left: 5px solid #8e44ad;
             padding-left: 10px;
             font-size: 18px;
         }
@@ -39,10 +39,11 @@
             background-color: #f8fafc;
             padding: 15px;
             border-radius: 6px;
+            align-items: flex-end;
         }
         .form-group {
             flex: 1;
-            min-width: 140px;
+            min-width: 130px;
         }
         label {
             display: block;
@@ -60,7 +61,7 @@
             font-size: 14px;
         }
         .btn-main {
-            background-color: #2ecc71;
+            background-color: #8e44ad;
             color: white;
             border: none;
             border-radius: 4px;
@@ -69,12 +70,11 @@
             cursor: pointer;
             font-weight: bold;
             height: 38px;
-            align-self: flex-end;
-            margin-bottom: 1px;
+            min-width: 150px;
         }
-        .btn-main:hover { background-color: #27ae60; }
+        .btn-main:hover { background-color: #732d91; }
         
-        /* 歷史表格樣式 */
+        /* 表格樣式 */
         .table-container {
             width: 100%;
             overflow-x: auto;
@@ -83,27 +83,29 @@
         table {
             width: 100%;
             border-collapse: collapse;
-            font-size: 14px;
+            font-size: 13px;
             text-align: center;
         }
         th, td {
-            padding: 10px;
+            padding: 10px 4px;
             border-bottom: 1px solid #e2e8f0;
         }
         th {
             background-color: #edf2f7;
             color: #4a5568;
             font-weight: bold;
+            white-space: nowrap;
         }
         tr:hover { background-color: #f8fafc; }
         
-        /* 狀態與損益顏色（台灣習慣：紅賺綠賠） */
+        /* 損益顏色（台灣習慣：紅賺綠賠） */
         .profit { color: #e74c3c; font-weight: bold; }
         .loss { color: #2ecc71; font-weight: bold; }
         .neutral { color: #7f8c8d; }
+        .strike-text { color: #8e44ad; font-weight: bold; }
         
-        .status-open { background-color: #ffeebc; color: #b7791f; padding: 2px 6px; border-radius: 4px; font-weight: bold; font-size: 12px; }
-        .status-closed { background-color: #edf2f7; color: #4a5568; padding: 2px 6px; border-radius: 4px; font-size: 12px; }
+        .status-open { background-color: #ffeebc; color: #b7791f; padding: 2px 6px; border-radius: 4px; font-weight: bold; font-size: 11px; }
+        .status-closed { background-color: #edf2f7; color: #4a5568; padding: 2px 6px; border-radius: 4px; font-size: 11px; }
         
         .btn-sm {
             padding: 4px 8px;
@@ -112,32 +114,40 @@
             cursor: pointer;
             font-size: 12px;
             font-weight: bold;
+            white-space: nowrap;
         }
         .btn-close { background-color: #3498db; color: white; }
         .btn-close:hover { background-color: #2980b9; }
-        .btn-delete { background-color: #e74c3c; color: white; }
-        .btn-delete:hover { background-color: #c0392b; }
+        .btn-delete { background-color: #95a5a6; color: white; }
+        .btn-delete:hover { background-color: #7f8c8d; }
         
         .clear-all-box {
             text-align: right;
             margin-top: 15px;
         }
         .btn-clear-all {
-            background-color: #95a5a6;
-            color: white;
+            background-color: #cbd5e1;
+            color: #475569;
             border: none;
             padding: 6px 12px;
             border-radius: 4px;
             cursor: pointer;
-            font-size: 12px;
+            font-size: 11px;
         }
-        .btn-clear-all:hover { background-color: #7f8c8d; }
+        .btn-clear-all:hover { background-color: #cbd5e1; color: #0f172a; }
+        
+        .td-input {
+            width: 75px;
+            padding: 4px;
+            font-size: 13px;
+            text-align: center;
+        }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h2>1. 當前盤中建倉輸入</h2>
+    <h2>1. 盤中確認建倉（含履約價紀錄）</h2>
     <div class="flex-inputs">
         <div class="form-group">
             <label>交易方向</label>
@@ -147,32 +157,39 @@
             </select>
         </div>
         <div class="form-group">
-            <label>進場台指點數</label>
-            <input type="number" id="indexPoint" placeholder="例如: 22050">
+            <label>履約價</label>
+            <input type="number" id="strikePrice" placeholder="例如: 40500" step="50">
+        </div>
+        <div class="form-group">
+            <label>進場當下台指點數</label>
+            <input type="number" id="indexPoint" placeholder="例如: 40150">
         </div>
         <div class="form-group">
             <label>買進權利金 (點)</label>
-            <input type="number" id="entryPrice" placeholder="例如: 80" step="0.5">
+            <input type="number" id="entryPrice" placeholder="例如: 120" step="0.5">
         </div>
         <div class="form-group">
-            <label>交易口數</label>
+            <label>口數</label>
             <input type="number" id="quantity" value="1" min="1">
         </div>
-        <button class="btn-main" onclick="createPosition()">確認建倉 (存入瀏覽器)</button>
+        <button class="btn-main" onclick="createPosition()">確認建倉</button>
     </div>
 
-    <h2>2. 當日交易歷史與盤中部位</h2>
+    <h2>2. 當日交易歷史與防當機快取部位</h2>
     <div class="table-container">
         <table>
             <thead>
                 <tr>
                     <th>建立時間</th>
                     <th>商品</th>
+                    <th>履約價</th>
                     <th>進場台指</th>
                     <th>買進點數</th>
                     <th>口數</th>
+                    <th>平倉台指</th>
                     <th>平倉點數</th>
-                    <th>點數損益</th>
+                    <th>台指變動</th>
+                    <th>選擇權損益</th>
                     <th>真實損益 (NTD)</th>
                     <th>狀態</th>
                     <th>操作</th>
@@ -189,75 +206,81 @@
 </div>
 
 <script>
-    // 頁面載入時，自動從瀏覽器快取 (localStorage) 讀取歷史資料
-    let tradeHistory = JSON.parse(localStorage.getItem('my_option_trades')) || [];
+    // 使用 V3 金鑰，確保包含履約價的新資料結構獨立運作
+    let tradeHistory = JSON.parse(localStorage.getItem('my_option_trades_v3')) || [];
 
-    // 初始化渲染表格
     renderTable();
 
-    // 點擊「確認建倉」執行的功能
     function createPosition() {
         const type = document.getElementById('tradeType').value;
-        const indexPoint = document.getElementById('indexPoint').value;
+        const strikePrice = parseFloat(document.getElementById('strikePrice').value);
+        const indexPoint = parseFloat(document.getElementById('indexPoint').value);
         const entryPrice = parseFloat(document.getElementById('entryPrice').value);
         const quantity = parseInt(document.getElementById('quantity').value);
 
-        if (isNaN(entryPrice) || isNaN(quantity) || entryPrice <= 0) {
-            alert("請填入正確的買進權利金與口數！");
+        if (isNaN(strikePrice) || isNaN(indexPoint) || isNaN(entryPrice) || isNaN(quantity) || entryPrice <= 0 || indexPoint <= 0 || strikePrice <= 0) {
+            alert("請完整填寫履約價、進場台指點數、買進權利金與口數！");
             return;
         }
 
-        // 建立一筆新的交易物件 (預設狀態為 'open' 未平倉)
         const now = new Date();
         const timeStr = `${now.getMonth()+1}/${now.getDate()} ${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;
         
         const newTrade = {
-            id: Date.now(), // 用時間戳記當唯一ID
+            id: Date.now(),
             date: timeStr,
             type: type,
-            indexPoint: indexPoint ? parseInt(indexPoint) : '-',
+            strikePrice: strikePrice,
+            indexPoint: indexPoint,
             entryPrice: entryPrice,
             quantity: quantity,
+            exitIndex: null,
             exitPrice: null,
+            indexDiff: null,
             pnlPoints: null,
             pnlNTD: null,
             status: 'open'
         };
 
-        // 塞入歷史陣列的最前端（最新的顯示在最上面）
         tradeHistory.unshift(newTrade);
-        
-        // 儲存並更新畫面
         saveAndRender();
 
-        // 清空表單的部分輸入框，方便下一筆輸入
+        // 清空輸入框，方便下一筆操作
+        document.getElementById('strikePrice').value = '';
         document.getElementById('indexPoint').value = '';
         document.getElementById('entryPrice').value = '';
     }
 
-    // 盤中或尾盤點擊「平倉」執行的功能
     function closePosition(id) {
-        const exitInput = document.getElementById(`exit_${id}`);
-        const exitPrice = parseFloat(exitInput.value);
+        const exitIndexInput = document.getElementById(`exit_index_${id}`);
+        const exitPriceInput = document.getElementById(`exit_price_${id}`);
+        
+        const exitIndex = parseFloat(exitIndexInput.value);
+        const exitPrice = parseFloat(exitPriceInput.value);
 
-        if (isNaN(exitPrice) || exitPrice < 0) {
-            alert("請輸入正確的平倉權利金點數！");
+        if (isNaN(exitIndex) || isNaN(exitPrice) || exitIndex <= 0 || exitPrice < 0) {
+            alert("請完整填寫平倉當下的台指點數與選擇權權利金！");
             return;
         }
 
-        // 尋找對應的交易紀錄
         const trade = tradeHistory.find(t => t.id === id);
         if (trade) {
+            trade.exitIndex = exitIndex;
             trade.exitPrice = exitPrice;
-            trade.pnlPoints = exitPrice - trade.entryPrice; // 買方損益邏輯：平倉點 - 進場點
-            trade.pnlNTD = trade.pnlPoints * 50 * trade.quantity; // 選擇權 1點 = 50元
+            
+            // 計算台指實質變動點數
+            const rawIndexDiff = exitIndex - trade.indexPoint;
+            trade.indexDiff = trade.type === 'CALL' ? rawIndexDiff : -rawIndexDiff;
+            
+            // 選擇權買方損益
+            trade.pnlPoints = exitPrice - trade.entryPrice;
+            trade.pnlNTD = trade.pnlPoints * 50 * trade.quantity;
             trade.status = 'closed';
             
             saveAndRender();
         }
     }
 
-    // 刪除單筆紀錄
     function deletePosition(id) {
         if(confirm("確定要刪除這筆紀錄嗎？")) {
             tradeHistory = tradeHistory.filter(t => t.id !== id);
@@ -265,7 +288,6 @@
         }
     }
 
-    // 清除全部紀錄
     function clearAllHistory() {
         if(confirm("警告：這將會永久刪除瀏覽器中所有的歷史交易紀錄，確定清除？")) {
             tradeHistory = [];
@@ -273,56 +295,63 @@
         }
     }
 
-    // 核心：將資料寫入硬碟快取並渲染畫面
     function saveAndRender() {
-        localStorage.setItem('my_option_trades', JSON.stringify(tradeHistory));
+        localStorage.setItem('my_option_trades_v3', JSON.stringify(tradeHistory));
         renderTable();
     }
 
-    // 將資料轉化為表格 HTML 呈現
     function renderTable() {
         const tbody = document.getElementById('historyBody');
         tbody.innerHTML = '';
 
         if (tradeHistory.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="10" class="neutral" style="padding:30px;">目前尚無交易紀錄，請於上方輸入建倉。</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="13" class="neutral" style="padding:30px;">目前尚無交易紀錄，請於上方輸入建倉。</td></tr>`;
             return;
         }
 
         tradeHistory.forEach(trade => {
             const tr = document.createElement('tr');
             
-            let exitCell = '';
+            let exitIndexCell = '';
+            let exitPriceCell = '';
+            let indexDiffCell = '-';
             let pnlPointsCell = '-';
             let pnlNtdCell = '-';
             let statusCell = '';
             let actionCell = '';
 
-            // 根據未平倉/已平倉 決定畫面的外觀
             if (trade.status === 'open') {
                 statusCell = `<span class="status-open">未平倉</span>`;
-                exitCell = `<input type="number" id="exit_${trade.id}" placeholder="平倉點" step="0.5" style="width:80px; padding:4px;">`;
+                exitIndexCell = `<input type="number" id="exit_index_${trade.id}" placeholder="台指點" class="td-input">`;
+                exitPriceCell = `<input type="number" id="exit_price_${trade.id}" placeholder="權利金" class="td-input" step="0.5">`;
                 actionCell = `<button class="btn-sm btn-close" onclick="closePosition(${trade.id})">確認平倉</button>`;
             } else {
                 statusCell = `<span class="status-closed">已平倉</span>`;
-                exitCell = trade.exitPrice;
+                exitIndexCell = trade.exitIndex;
+                exitPriceCell = trade.exitPrice;
                 
-                // 計算正負號與上色格式
-                const prefix = trade.pnlNTD > 0 ? '+' : '';
-                const colorClass = trade.pnlNTD > 0 ? 'profit' : (trade.pnlNTD < 0 ? 'loss' : 'neutral');
+                const prefixIndex = trade.indexDiff > 0 ? '+' : '';
+                const colorClassIndex = trade.indexDiff > 0 ? 'profit' : (trade.indexDiff < 0 ? 'loss' : 'neutral');
+                indexDiffCell = `<span class="${colorClassIndex}">${prefixIndex}${trade.indexDiff} 點</span>`;
+
+                const prefixPnl = trade.pnlNTD > 0 ? '+' : '';
+                const colorClassPnl = trade.pnlNTD > 0 ? 'profit' : (trade.pnlNTD < 0 ? 'loss' : 'neutral');
                 
-                pnlPointsCell = `<span class="${colorClass}">${prefix}${trade.pnlPoints.toFixed(1)}</span>`;
-                pnlNtdCell = `<span class="${colorClass}">${prefix}${trade.pnlNTD.toLocaleString()} 元</span>`;
+                pnlPointsCell = `<span class="${colorClassPnl}">${prefixPnl}${trade.pnlPoints.toFixed(1)}</span>`;
+                pnlNtdCell = `<span class="${colorClassPnl}">${prefixPnl}${trade.pnlNTD.toLocaleString()} 元</span>`;
                 actionCell = `<button class="btn-sm btn-delete" onclick="deletePosition(${trade.id})">刪除</button>`;
             }
 
             tr.innerHTML = `
                 <td>${trade.date}</td>
                 <td style="font-weight:bold;">${trade.type}</td>
+                <td class="strike-text">${trade.strikePrice}</td>
                 <td>${trade.indexPoint}</td>
                 <td>${trade.entryPrice}</td>
                 <td>${trade.quantity}</td>
-                <td>${exitCell}</td>
+                <td>${exitIndexCell}</td>
+                <td>${exitPriceCell}</td>
+                <td>${indexDiffCell}</td>
                 <td>${pnlPointsCell}</td>
                 <td>${pnlNtdCell}</td>
                 <td>${statusCell}</td>
